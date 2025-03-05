@@ -1,8 +1,8 @@
-streamlit
-dill
-pickle5
-pandas
-numpy
+numpy<2
+scipy
 scikit-learn
-surprise
+scikit-surprise
+streamlit
+pandas
+dill
 emoji

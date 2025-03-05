@@ -4,8 +4,8 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
-from surprise import SVD, Reader, Dataset
 import emoji
+import joblib
 
 # Load pickled data
 @st.cache_resource
@@ -20,11 +20,20 @@ def load_pickled_data():
 
 # Load pre-trained SVD model
 @st.cache_resource
+
+#def load_svd_model():
+    # try:
+    #     with open('best_svd_model.pkl', 'rb') as f:
+    #         svd_model = pickle.load(f)
+    #     return svd_model
+    # except FileNotFoundError as e:
+    #     st.error(f"File not found: {e}")
+    #     st.stop()
+
 def load_svd_model():
     try:
-        with open('best_svd_model.pkl', 'rb') as f:
-            svd_model = pickle.load(f)
-        return svd_model
+        return joblib.load('best_svd_model.joblib')
+    
     except FileNotFoundError as e:
         st.error(f"File not found: {e}")
         st.stop()
@@ -49,7 +58,7 @@ with tab1:
     pickled_data = load_pickled_data()
     df = pickled_data['df1']
     pca_df = pickled_data['df2']
-    train = pd.read_csv('train.csv')
+
 
     # Recommendation method selection
     model = st.radio(
