@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
+from surprise import SVD
 import emoji
 
 # Load pickled data
