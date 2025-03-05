@@ -48,7 +48,6 @@ with tab1:
     pickled_data = load_pickled_data()
     df = pickled_data['df1']
     pca_df = pickled_data['df2']
-    train = pd.read_csv('train.csv')
 
     # Recommendation method selection
     model = st.radio(
