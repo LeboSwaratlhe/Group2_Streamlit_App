@@ -3,5 +3,5 @@ dill
 pandas
 numpy
 scikit-learn
-surprise
+scikit-surprise
 emoji
