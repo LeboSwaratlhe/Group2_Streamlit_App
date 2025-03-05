@@ -6,4 +6,4 @@ streamlit
 pandas
 dill
 emoji
-joblib
+joblib==1.4.2
