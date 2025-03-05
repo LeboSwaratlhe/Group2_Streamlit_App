@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
 from surprise.prediction_algorithms import SVD
 from surprise import Dataset
-from surprise import Reader
+from surprise import Reader
 import emoji
 
 # Load pickled data
