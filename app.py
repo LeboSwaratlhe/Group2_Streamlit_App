@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
 import emoji
 import joblib
+import tensorflow as tf
 
 # Load pickled data
 @st.cache_resource
@@ -32,7 +33,7 @@ def load_pickled_data():
 
 def load_svd_model():
     try:
-        return joblib.load('best_svd_model.joblib')
+        return tf.keras.models.load_model('ncf_model.h5')
     
     except FileNotFoundError as e:
         st.error(f"File not found: {e}")
@@ -89,7 +90,12 @@ with tab1:
     # Collaborative-based rating predictor function
     def get_predicted_rating(input_anime, user_id, svd_model):
             
-            return round(svd_model.predict(user_id, input_anime).est, 2)
+            user_input = np.array([user_id]).reshape(1, 1)  # Reshaped as a 2D array
+            anime_input = np.array([input_anime]).reshape(1, 1)
+
+            # Now pass them correctly as separate inputs
+            predicted_rating = svd_model.predict([user_input, anime_input])[0][0]
+            return round(predicted_rating, 2) 
 
     # Collaborative-based recommendation function
     def recommend_anime_for_user(user_id, svd_model, df, pca_df, top_n=10, alpha=0.0):
