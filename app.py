@@ -21,7 +21,7 @@ def load_pickled_data():
         st.stop()
 
 # Load pre-trained SVD model
-@st.cache_resource
+
 def load_svd_model():
     try:
         with open('best_svd_model.pkl', 'rb') as f:
