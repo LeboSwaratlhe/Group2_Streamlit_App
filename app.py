@@ -22,8 +22,8 @@ def load_pickled_data():
 #@st.cache_resource
 def load_svd_model():
     try:
-        with open('best_svd_model.pkl', 'rb') as fl:
-            svd_model = pickle.load(fl)
+        with open('trained_model.dill', 'rb') as fl:
+            svd_model = dill.load(fl)
         return svd_model
     except FileNotFoundError as e:
         st.error(f"File not found: {e}")
