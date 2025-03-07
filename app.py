@@ -4,9 +4,8 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
+from surprise import SVD, Reader, Dataset
 import emoji
-import joblib
-import tensorflow as tf
 
 # Load pickled data
 @st.cache_resource
@@ -21,20 +20,11 @@ def load_pickled_data():
 
 # Load pre-trained SVD model
 @st.cache_resource
-
-#def load_svd_model():
-    # try:
-    #     with open('best_svd_model.pkl', 'rb') as f:
-    #         svd_model = pickle.load(f)
-    #     return svd_model
-    # except FileNotFoundError as e:
-    #     st.error(f"File not found: {e}")
-    #     st.stop()
-
 def load_svd_model():
     try:
-        return tf.keras.models.load_model('ncf_model.h5')
-    
+        with open('best_svd_model.pkl', 'rb') as f:
+            svd_model = pickle.load(f)
+        return svd_model
     except FileNotFoundError as e:
         st.error(f"File not found: {e}")
         st.stop()
@@ -59,7 +49,7 @@ with tab1:
     pickled_data = load_pickled_data()
     df = pickled_data['df1']
     pca_df = pickled_data['df2']
-
+    train = pd.read_csv('train.csv')
 
     # Recommendation method selection
     model = st.radio(
@@ -90,12 +80,7 @@ with tab1:
     # Collaborative-based rating predictor function
     def get_predicted_rating(input_anime, user_id, svd_model):
             
-            user_input = np.array([user_id]).reshape(1, 1)  # Reshaped as a 2D array
-            anime_input = np.array([input_anime]).reshape(1, 1)
-
-            # Now pass them correctly as separate inputs
-            predicted_rating = svd_model.predict([user_input, anime_input])[0][0]
-            return round(predicted_rating, 2) 
+            return round(svd_model.predict(user_id, input_anime).est, 2)
 
     # Collaborative-based recommendation function
     def recommend_anime_for_user(user_id, svd_model, df, pca_df, top_n=10, alpha=0.0):
@@ -215,7 +200,7 @@ with tab1:
         
         anime_title = st.selectbox(emojize(":film_frames: Select an anime title:"), anime_titles)
         user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
-        alpha = st.slider("Weight for Collaborative Filtering (SVD)", 0.0, 1.0, 0.5)
+        alpha = st.slider("Weight for Hybrid (PCA + SVD)", 0.0, 1.0, 0.5)
         
         if st.button(emojize(":robot_face: Get Hybrid Recommendations")):
             with st.spinner('Generating recommendations...'):
