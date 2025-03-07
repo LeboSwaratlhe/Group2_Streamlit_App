@@ -29,6 +29,8 @@ def load_svd_model():
         st.error(f"File not found: {e}")
         st.stop()
 
+svd_model = load_svd_model()
+
 # Streamlit UI
 st.set_page_config(page_title="Anime Recommendation System", page_icon="🎬")
 
@@ -166,7 +168,6 @@ with tab1:
 
         if st.button(emojize(":robot_face: Predict Rating")):
             with st.spinner('Generating predicted rating...'):
-                svd_model = load_svd_model()
                 
                 # Get the anime_id for the selected title
                 matching_anime = df.loc[df['name'] == anime_title, 'anime_id']
