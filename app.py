@@ -20,16 +20,16 @@ def load_pickled_data():
 
 # Load pre-trained SVD model
 #@st.cache_resource
-def load_svd_model():
-    try:
-        with open('trained_model.dill', 'rb') as fl:
-            svd_model = dill.load(fl)
-        return svd_model
-    except FileNotFoundError as e:
-        st.error(f"File not found: {e}")
-        st.stop()
+# def load_svd_model():
+#     try:
+with open('trained_model.dill', 'rb') as fl:
+    svd_model = dill.load(fl)
+    #     return svd_model
+    # except FileNotFoundError as e:
+    #     st.error(f"File not found: {e}")
+    #     st.stop()
 
-svd_model = load_svd_model()
+#svd_model = load_svd_model()
 
 # Streamlit UI
 st.set_page_config(page_title="Anime Recommendation System", page_icon="🎬")
