@@ -62,9 +62,6 @@ with tab1:
 
         return user_encoder, anime_encoder
 
-    with open('app_preds.dill', 'rb') as f:
-        preds_df = dill.load(f)
-
     train = pd.read_csv('df_train.csv')
     valid_user_ids = set(train['user_id'])
 
