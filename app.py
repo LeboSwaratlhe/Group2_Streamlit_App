@@ -6,6 +6,9 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity as CS
 from surprise import SVD, Reader, Dataset
 import emoji
+from tensorflow.keras.models import load_model
+from sklearn.preprocessing import LabelEncoder
+
 
 # Load pickled data
 @st.cache_resource
@@ -19,17 +22,14 @@ def load_pickled_data():
         st.stop()
 
 # Load pre-trained SVD model
-#@st.cache_resource
-# def load_svd_model():
-#     try:
-with open('trained_model.dill', 'rb') as fl:
-    svd_model = dill.load(fl)
-    #     return svd_model
-    # except FileNotFoundError as e:
-    #     st.error(f"File not found: {e}")
-    #     st.stop()
-
-#svd_model = load_svd_model()
+@st.cache_resource
+def load_ncf_model():
+    try:
+        ncf_model = load_model("ncf_model.h5", safe_mode=False)
+        return ncf_model
+    except FileNotFoundError as e:
+        st.error(f"File not found: {e}")
+        st.stop()
 
 # Streamlit UI
 st.set_page_config(page_title="Anime Recommendation System", page_icon="🎬")
@@ -37,6 +37,7 @@ st.set_page_config(page_title="Anime Recommendation System", page_icon="🎬")
 # Use emoji package for shortcodes
 def emojize(text):
     return emoji.emojize(text)
+
 
 st.title(emojize(":clapper: Anime Recommendation System"))
 
@@ -51,17 +52,36 @@ with tab1:
     pickled_data = load_pickled_data()
     df = pickled_data['df1']
     pca_df = pickled_data['df2']
-    train = pd.read_csv('train.csv')
+
+    def get_encoders():
+        with open('anime_encoder.pkl', 'rb') as file:
+            anime_encoder = pickle.load(file)
+
+        with open('user_encoder.pkl', 'rb') as file2:
+            user_encoder = pickle.load(file2)
+
+        return user_encoder, anime_encoder
+
+    with open('app_preds.dill', 'rb') as f:
+        preds_df = dill.load(f)
+
+    train = pd.read_csv('df_train.csv')
+    valid_user_ids = set(train['user_id'])
+
 
     # Recommendation method selection
     model = st.radio(
         emojize(":mag_right: Select Recommendation Method"),
-        ['Content-Based (PCA)', 'Collaborative-Based (Rating Predictor - SVD)', 'Collaborative-Based (User Recommendations)', 'Hybrid (PCA + SVD)'],
+        ['Content-Based (PCA)',
+         'Collaborative-Based (Rating Predictor - SVD)',
+         'Collaborative-Based (User Recommendations)',
+         'Hybrid (PCA + SVD)'],
         index=0
     )
 
     # User Input
     anime_titles = df['name'].unique()
+    
 
     # PCA-based recommendation function
     def recommend_anime_pca30(input_anime, df, pca_df, top_n=10):
@@ -80,69 +100,72 @@ with tab1:
         return recommendations, similarities[similar_indices]
 
     # Collaborative-based rating predictor function
-    def get_predicted_rating(input_anime, user_id, svd_model):
-            
-            return round(svd_model.predict(user_id, input_anime).est, 2)
+    def get_predicted_rating(user_id, input_anime, ncf_model):
+        user_encoder, anime_encoder = get_encoders()
+        user_id_encoded = user_encoder.transform([user_id])[0]
+        anime_id_encoded = anime_encoder.transform([input_anime])[0]
+        
+        pred = ncf_model.predict([np.array([[user_id_encoded]]), np.array([[anime_id_encoded]])])[0][0]
+
+        pred = np.clip(pred, 1, 10)
+
+        return pred
 
     # Collaborative-based recommendation function
-    def recommend_anime_for_user(user_id, svd_model, df, pca_df, top_n=10, alpha=0.0):
-        # Get all anime IDs and names
-        anime_ids = df['anime_id'].unique()
-        anime_names = df.set_index('anime_id')['name'].to_dict()
+    def recommend_anime_for_user(user_id, ncf_model, df, pca_df, top_n=10, alpha=0.0):
 
-        # Predict ratings for all anime using the SVD model
-        svd_predictions = {anime_id: svd_model.predict(user_id, anime_id).est for anime_id in anime_ids}
+        udf = train[train['user_id']==user_id].sort_values(by='rating', ascending=False).head(10)
 
-        # Convert to DataFrame for faster operations
-        svd_df = pd.DataFrame(list(svd_predictions.items()), columns=['anime_id', 'svd_rating'])
+        if len(udf) < 10:
+            y_pred = 0
+            i = -1
+            user_encoder, anime_encoder = get_encoders()
+            while y_pred < 8:
+                i+=1
+                user_id_encoded = user_encoder.transform([user_id])[0]
+                anime_id_encoded = anime_encoder.transform([train['anime_id'][i]])[0]
         
-        # Merge with anime names
-        svd_df['name'] = svd_df['anime_id'].map(anime_names)
+                y_pred = ncf_model.predict([np.array([[user_id_encoded]]), np.array([[anime_id_encoded]])])[0][0]
+
+            recommendations, _ = recommend_anime_pca30(df[df['anime_id']==train['anime_id'][i]]['name'].to_numpy()[0], df, pca_df, 10)
+
+            return recommendations
         
-        # Sort by predicted rating
-        svd_df = svd_df.sort_values(by='svd_rating', ascending=False).head(50)
+        else:
+            return df[df['anime_id'].isin(udf['anime_id'])]['name'].tolist()
 
-        # Use PCA scores only for these top candidates
-        hybrid_scores = {}
-        for _, row in svd_df.iterrows():
-            anime = row['name']
-            pca_recs, pca_scores = recommend_anime_pca30(anime, df, pca_df, top_n=1)
-
-            if pca_recs:
-                pca_score = pca_scores[0]
-                hybrid_scores[anime] = round(alpha * row['svd_rating'] + (1 - alpha) * pca_score, 2)
-
-        # Sort final hybrid recommendations
-        sorted_anime = sorted(hybrid_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        return [anime for anime, _ in sorted_anime[:top_n]]
-
+            
     # Hybrid recommendation function
-    def recommend_anime_hybrid(input_anime, user_id, svd_model, df, pca_df, top_n=10, alpha=0.5):
+    def recommend_anime_hybrid(input_anime, user_id, ncf_model, df, pca_df, top_n=10, alpha=0.5):
         pca_recs, pca_scores = recommend_anime_pca30(input_anime, df, pca_df, top_n=50)
         
         if pca_recs is None:
             return None
 
-        svd_predictions = {}
-        svd_scaled_preds = {}
-        svd_min, svd_max = 1, 10
+        ncf_predictions = {}
+        ncf_scaled_preds = {}
+        ncf_min, ncf_max = 1, 10
+
+        user_encoder, anime_encoder = get_encoders()
 
         for anime in pca_recs:
             anime_id = df.loc[df['name'] == anime, 'anime_id'].iloc[0]
-            svd_pred = svd_model.predict(user_id, anime_id).est
+            user_id_encoded = user_encoder.transform([user_id])[0]
+            anime_id_encoded = anime_encoder.transform([anime_id])[0]
+        
+            ncf_pred = ncf_model.predict([np.array([[user_id_encoded]]), np.array([[anime_id_encoded]])])[0][0]
+            ncf_pred = np.clip(ncf_pred, 1, 10)
+            ncf_scaled = round((ncf_pred - ncf_min) / (ncf_max - ncf_min), 4)
+            ncf_predictions[anime] = round(ncf_pred, 2)
+            ncf_scaled_preds[anime] = ncf_scaled
 
-            svd_scaled = round((svd_pred - svd_min) / (svd_max - svd_min), 4)
-            svd_predictions[anime] = round(svd_pred, 2)
-            svd_scaled_preds[anime] = svd_scaled
-
-        hybrid_scores = {anime: round(alpha * svd_scaled_preds[anime] + (1 - alpha) * pca_score, 2)
+        hybrid_scores = {anime: round(alpha * ncf_scaled_preds[anime] + (1 - alpha) * pca_score, 2)
                          for anime, pca_score in zip(pca_recs, pca_scores)}
 
         sorted_anime = sorted(hybrid_scores.items(), key=lambda x: x[1], reverse=True)
         
         # Extract recommended anime, their hybrid scores and predicted ratings
-        recommended_anime = [(anime, score, svd_predictions[anime]) for anime, score in sorted_anime[:top_n]]
+        recommended_anime = [(anime, score, ncf_predictions[anime]) for anime, score in sorted_anime[:top_n]]
         
         return recommended_anime
 
@@ -164,55 +187,87 @@ with tab1:
     elif model == "Collaborative-Based (Rating Predictor - SVD)":
 
         anime_title = st.selectbox(emojize(":film_frames: Select an anime title:"), anime_titles)
-        user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
+        #user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
+        user_id_input = st.text_input(emojize(":id: Enter User ID:"))
 
-        if st.button(emojize(":robot_face: Predict Rating")):
-            with st.spinner('Generating predicted rating...'):
-                
-                # Get the anime_id for the selected title
-                matching_anime = df.loc[df['name'] == anime_title, 'anime_id']
-                if matching_anime.empty:
-                    st.write(":no_entry_sign: Anime not found in the dataset.")
+        # Validate input
+        if user_id_input:
+            try:
+                user_id = int(user_id_input)
+                if user_id in valid_user_ids:
+                    st.success(f"User ID is Valid: {user_id}")
+                    if st.button(emojize(":robot_face: Predict Rating")):
+                        with st.spinner('Generating predicted rating...'):
+                            ncf_model = load_ncf_model()
+                            # Get the anime_id for the selected title
+                            matching_anime = df.loc[df['name'] == anime_title, 'anime_id']
+                            if matching_anime.empty:
+                                st.write(":no_entry_sign: Anime not found in the dataset.")
+                            else:
+                                anime_id = matching_anime.iloc[0]
+
+                                # Predict rating for the selected anime
+                                predicted_rating = get_predicted_rating(user_id, anime_id, ncf_model)
+                                st.write(f"📊 **Predicted Rating for {anime_title}:** ⭐ {predicted_rating:.2f}")
                 else:
-                    anime_id = matching_anime.iloc[0]
-
-                    # Predict rating for the selected anime
-                    predicted_rating = get_predicted_rating(user_id, anime_id, svd_model)
-                    st.write(f"📊 **Predicted Rating for {anime_title}:** ⭐ {predicted_rating:.2f}")
+                    st.error("Invalid User ID! Please enter a valid user ID.")
+            except ValueError:
+                st.error("Please enter a valid numeric User ID.")
+                
 
     # Streamlit UI for Collaborative Filtering (User Recommendations)
     elif model == "Collaborative-Based (User Recommendations)":
-        user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
+        user_id_input = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
 
-        if st.button(emojize(":robot_face: Get User-Based Recommendations")):
-            with st.spinner(f'Generating recommendations for user {user_id}...'):
-                svd_model = load_svd_model()
-                recommendations = recommend_anime_for_user(user_id, svd_model, df, pca_df, top_n=10, alpha=0.0)
-            
-            if recommendations is None:
-                st.write(":no_entry_sign: Anime not found.")
+        try:
+            user_id = int(user_id_input)
+            if user_id in valid_user_ids:
+                st.success(f"User ID is Valid: {user_id}")
+
+                if st.button(emojize(":robot_face: Get User-Based Recommendations")):
+                    with st.spinner(f'Generating recommendations for user {user_id}...'):
+                        ncf_model = load_ncf_model()
+                        recommendations = recommend_anime_for_user(user_id, ncf_model, df, pca_df, top_n=10, alpha=0.0)
+                    
+                    if recommendations is None:
+                        st.write(":no_entry_sign: Anime not found.")
+                    else:
+                        st.write(f":sparkles: Recommendations For User {user_id}:")
+                        for i, anime in enumerate(recommendations, 1):
+                            st.write(f"{i}. {anime} :tv:")
+
             else:
-                st.write(f":sparkles: Recommendations For User {user_id}:")
-                for i, anime in enumerate(recommendations, 1):
-                    st.write(f"{i}. {anime} :tv:")
+                st.error("Invalid User ID! Please enter a valid user ID.")
+        except ValueError:
+            st.error("Please enter a valid numeric User ID.")
 
     # Streamlit UI for Hybrid Model
     elif model == "Hybrid (PCA + SVD)":
         
         anime_title = st.selectbox(emojize(":film_frames: Select an anime title:"), anime_titles)
-        user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
-        alpha = st.slider("Weight for Hybrid (PCA + SVD)", 0.0, 1.0, 0.5)
+        user_id_input = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
+        alpha = st.slider("Weight for Hybrid (PCA + SVD)", 0.0, 1.0, 0.5, step=0.1)
         
-        if st.button(emojize(":robot_face: Get Hybrid Recommendations")):
-            with st.spinner('Generating recommendations...'):
-                svd_model = load_svd_model()
-                recommendations = recommend_anime_hybrid(anime_title, user_id, svd_model, df, pca_df, top_n=10, alpha=alpha)
-            if recommendations is None:
-                st.write(":no_entry_sign: No recommendations found.")
+        try:
+            user_id = int(user_id_input)
+            if user_id in valid_user_ids:
+                st.success(f"User ID is Valid: {user_id}")
+
+                if st.button(emojize(":robot_face: Get Hybrid Recommendations")):
+                    with st.spinner('Generating recommendations...'):
+                        ncf_model = load_ncf_model()
+                        recommendations = recommend_anime_hybrid(anime_title, user_id, ncf_model, df, pca_df, top_n=10, alpha=alpha)
+                    if recommendations is None:
+                        st.write(":no_entry_sign: No recommendations found.")
+                    else:
+                        st.write(":sparkles: Hybrid Recommendations:")
+                        for i, (anime, score, rating) in enumerate(recommendations, 1):
+                            st.write(f"{i}. **{anime}** :star2: (Hybrid Score: {score:.2f}) :star: (Predicted Rating: {round(rating, 2)})")
+
             else:
-                st.write(":sparkles: Hybrid Recommendations:")
-                for i, (anime, score, rating) in enumerate(recommendations, 1):
-                    st.write(f"{i}. **{anime}** :star2: (Hybrid Score: {score:.2f}) :star: (Predicted Rating: {rating})") 
+                st.error("Invalid User ID! Please enter a valid user ID.")
+        except ValueError:
+            st.error("Please enter a valid numeric User ID.")    
 
 with tab2:
     st.write("### Team Members:")
