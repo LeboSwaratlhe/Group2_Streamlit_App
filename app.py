@@ -70,9 +70,9 @@ with tab1:
     model = st.radio(
         emojize(":mag_right: Select Recommendation Method"),
         ['Content-Based (PCA)',
-         'Collaborative-Based (Rating Predictor - SVD)',
+         'Collaborative-Based (Rating Predictor - NCF)',
          'Collaborative-Based (User Recommendations)',
-         'Hybrid (PCA + SVD)'],
+         'Hybrid (PCA + NCF)'],
         index=0
     )
 
@@ -181,7 +181,7 @@ with tab1:
                     st.write(f"{i}. {anime} :tv:")
 
     # Streamlit UI for Collaborative Filtering (Rating Predictor SVD)
-    elif model == "Collaborative-Based (Rating Predictor - SVD)":
+    elif model == "Collaborative-Based (Rating Predictor - NCF)":
 
         anime_title = st.selectbox(emojize(":film_frames: Select an anime title:"), anime_titles)
         #user_id = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
@@ -239,7 +239,7 @@ with tab1:
             st.error("Please enter a valid numeric User ID.")
 
     # Streamlit UI for Hybrid Model
-    elif model == "Hybrid (PCA + SVD)":
+    elif model == "Hybrid (PCA + NCF)":
         
         anime_title = st.selectbox(emojize(":film_frames: Select an anime title:"), anime_titles)
         user_id_input = st.number_input(emojize(":id: Enter User ID:"), min_value=1, step=1)
