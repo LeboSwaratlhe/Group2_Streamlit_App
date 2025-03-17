@@ -16,8 +16,9 @@
 ---
 
 ## About the Project <a class="anchor" id="about-the-project"></a> 
--
-This project focuses on the development of a hybrid recommender system that integrates collaborative filtering and content-based approaches for a dataset of anime titles. The system is designed to accurately predict user ratings for anime titles that have not yet been viewed, leveraging the user's historical preferences and behavioral data to generate personalized recommendations.
+
+This project focuses on the development of a hybrid recommender system that integrates collaborative filtering and content-based approaches for a dataset of anime titles. The system is designed to accurately predict user ratings for anime titles that have not yet been viewed, leveraging the user's historical preferences and behavioral data to generate personalized recommendations
+
 ---
 
 ## Features <a class="anchor" id="features"></a>
