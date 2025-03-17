@@ -89,6 +89,11 @@ The Anime Recommendation System is a user-friendly application designed to provi
 - **Integration:** The app is integrated with a database of anime titles and user ratings to ensure accurate and real-time recommendations.  
 
 
+### **Deployed App**
+The Anime Recommendation System is now live and accessible for use. You can explore the application by visiting the following link:  
+🔗 [Anime Recommendation System](https://group2-2407ftds.streamlit.app/)
+
+
 This deployment provides a robust and interactive platform for anime enthusiasts to discover new titles aligned with their tastes. Let us know if you need further details or assistance!
 
 
