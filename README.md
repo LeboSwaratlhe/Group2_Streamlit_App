@@ -3,6 +3,7 @@
 <div id="s_image" align="center">
   <img src="Streamlit app screenshot.jpeg" width="850" height="400" alt=""/>
 </div>
+
 ---
 
 ## Table of Contents
