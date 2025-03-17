@@ -64,24 +64,22 @@ The Anime Recommendation System is a user-friendly application designed to provi
 
 **Main Functionality:**  
 
-1. **🔎 Select Recommendation Method**  
+1. **Select Recommendation Method**  
    Users can choose from the following recommendation methods:  
    - **1. Content-Based (PCA):** Utilizes Principal Component Analysis to recommend anime titles based on content similarity.  
    - **2. Collaborative-Based (Rating Predictor - NCF):** Employs Neural Collaborative Filtering to predict user ratings for unseen anime titles.  
    - **3. Collaborative-Based (User Recommendations):** Generates recommendations based on similar users' preferences.  
    - **4. Hybrid (PCA + NCF):** Combines content-based and collaborative filtering approaches for enhanced recommendation accuracy.  
 
-2. **🎞️ Select an Anime Title:**  
+2. **Select an Anime Title:**  
    Users can input or select an anime title (e.g., *"Kimi no Na Wa."*) to receive personalized recommendations.  
 
----
 
 #### **How It Works**  
 1. The user selects a recommendation method based on their preference.  
 2. The user inputs or selects an anime title they enjoy.  
 3. The system processes the input using the chosen method and generates a list of recommended anime titles tailored to the user's preferences.  
 
----
 
 #### **Deployment Details**  
 - **Backend:** The system is powered by machine learning models (PCA, NCF, and hybrid techniques) deployed on a scalable cloud platform.  
@@ -90,6 +88,8 @@ The Anime Recommendation System is a user-friendly application designed to provi
 
 
 This deployment provides a robust and interactive platform for anime enthusiasts to discover new titles aligned with their tastes. Let us know if you need further details or assistance!
+
+
 ---
 ## Technologies Used <a class="anchor" id="technologies-used"></a>
 - `Streamlit: For building and deploying the web app`
