@@ -46,6 +46,7 @@ To run this app locally, follow these steps:
 4. **Run the Streamlit App**
    ```bash
       streamlit run app.py
+---
 
 ## Usage <a class="anchor" id="usage"></a>
 Prerequisites
@@ -100,6 +101,8 @@ This deployment provides a robust and interactive platform for anime enthusiasts
 - `Dill`
 - `MLFlow, Pickle and surprise `
 
+
+---
 ## Team Members<a class="anchor" id="team-members"></a>
 
 | Name                                                                                        |  Email              
